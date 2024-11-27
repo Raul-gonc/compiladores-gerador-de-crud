@@ -3,126 +3,173 @@ from antlr4 import InputStream, CommonTokenStream
 from DatabaseModelLexer import DatabaseModelLexer
 from DatabaseModelParser import DatabaseModelParser
 
-def generate_sqlalchemy_models(parsed_data):
+# Função para gerar arquivos SQLAlchemy, Repositórios, Serviços e Schemas
+def generate_fastapi_files(parsed_data):
+    os.makedirs(f"output/models", exist_ok=True)
+    os.makedirs(f"output/repositories", exist_ok=True)
+    os.makedirs(f"output/services", exist_ok=True)
+    os.makedirs(f"output/controllers", exist_ok=True)
+    os.makedirs(f"output/schemas", exist_ok=True)
     for table_name, table_data in parsed_data.items():
-        os.makedirs(f"output/{table_name}", exist_ok=True)
+        #os.makedirs(f"output/{table_name}", exist_ok=True)
 
+        # Gerar o Modelo SQLAlchemy
+        generate_sqlalchemy_model(table_name, table_data)
+
+        # Gerar o Repositório
+        generate_repository(table_name)
+
+        # Gerar o Serviço
+        generate_service(table_name)
+
+        # Gerar o Serviço
+        generate_controller(table_name)
+
+        # Gerar o Schema (Pydantic)
+        generate_schema(table_name, table_data)
+
+def generate_sqlalchemy_model(table_name, table_data):
+    relations = table_data["relations"]
+    lowName = table_name.lower()
+    with open(f"output/models/{table_name}.py", "w") as model_file:
+        model_file.write("from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey\n")
+        model_file.write("from sqlalchemy.orm import relationship\n")
+        model_file.write("from config.database import Base\n\n")
+
+        model_file.write(f"class {table_name.capitalize()}(Base):\n")
+        model_file.write(f"    __tablename__ = '{lowName}s'\n")
+
+        # Gerar colunas
         columns = table_data["columns"]
-        relations = table_data["relations"]
-        lowName = table_name.lower()
+        for column_name, column_type in columns.items():
+            column_type_sqlalchemy = {
+                "int": "Integer",
+                "string": "String",
+                "float": "Float",
+                "datetime": "DateTime"
+            }.get(column_type, "String")
+            primary_key = "" if column_name != "id" else ", primary_key=True, index=True"
+            model_file.write(f"    {column_name} = Column({column_type_sqlalchemy}{primary_key})\n")
 
-        # Gerar o modelo SQLAlchemy
-        with open(f"output/{table_name}/models.py", "w") as model_file:
-            model_file.write("from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, func\n")
-            model_file.write("from sqlalchemy.orm import relationship\n")
-            model_file.write("from config.database import Base\n\n")
-            
-            model_file.write(f"class {table_name.capitalize()}(Base):\n")
-            model_file.write(f"    __tablename__ = '{lowName}s'\n\n")
+       # Gerar relacionamentos
+        for relation in relations:
+            relation_name = relation["name"]
+            relation_type = relation["type"]
+            related_table = relation["table"]
 
-            for column_name, column_type in columns.items():
-                column_type_sql = {
-                    "int": "Integer",
-                    "string": "String",
-                    "float": "Float",
-                    "boolean": "Boolean",
-                    "datetime": "DateTime"
-                }[column_type]
-                model_file.write(f"    {column_name} = Column({column_type_sql})\n")
+            if relation_type == "one-to-many":
+                model_file.write(f"    {relation_name} = relationship('{related_table.capitalize()}', back_populates='{table_name}')\n")
+            elif relation_type == "many-to-one":
+                model_file.write(f"    {relation_name}_id = Column(Integer, ForeignKey('{related_table}s.id'))\n")
+            elif relation_type == "one-to-one":
+                model_file.write(f"    {relation_name}_id = Column(Integer, ForeignKey('{related_table}s.id'))\n")
+                model_file.write(f"    {relation_name} = relationship('{related_table.capitalize()}')\n")
 
-            # Gerar relacionamentos
-            for relation in relations:
-                relation_name = relation["name"]
-                relation_type = relation["type"]
-                related_table = relation["table"]
+        model_file.write("\n    created_at = Column(DateTime, default=func.now())\n")
+        model_file.write("    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())\n")
 
-                if relation_type == "one-to-many":
-                    model_file.write(f"    {relation_name} = relationship('{related_table.capitalize()}', back_populates='{table_name}')\n")
-                elif relation_type == "many-to-one":
-                    model_file.write(f"    {relation_name}_id = Column(Integer, ForeignKey('{related_table}s.id'))\n")
-                elif relation_type == "one-to-one":
-                    model_file.write(f"    {relation_name}_id = Column(Integer, ForeignKey('{related_table}s.id'))\n")
-                    model_file.write(f"    {relation_name} = relationship('{related_table.capitalize()}')\n")
+def generate_repository(table_name):
+    with open(f"output/repositories/{table_name}.py", "w") as repo_file:
+        repo_file.write(f"""
+from models.{table_name} import {table_name.capitalize()}
+from sqlalchemy.orm import Session
 
-            model_file.write("\n    created_at = Column(DateTime, default=func.now())\n")
-            model_file.write("    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())\n")
+def get_all(db: Session):
+    return db.query({table_name.capitalize()}).all()
 
-        # Gerar repositório, service, controller (como antes)
-        # Repositório
-        with open(f"output/{table_name}/repository.py", "w") as repo_file:
-            repo_file.write("""
-data = []
+def get_by_id(db: Session, item_id: int):
+    return db.query({table_name.capitalize()}).filter({table_name.capitalize()}.id == item_id).first()
 
-def get_all():
-    return data
-
-def get_one(id: int):
-    return next((item for item in data if item['id'] == id), None)
-
-def create(item: dict):
-    data.append(item)
+def create(db: Session, item_data: dict):
+    item = {table_name.capitalize()}(**item_data)
+    db.add(item)
+    db.commit()
+    db.refresh(item)
     return item
 
-def delete(id: int):
-    global data
-    data = [item for item in data if item['id'] != id]
-
-# Relações
-def get_related_{table_name.lower()}(relation_key: str, relation_value):
-    return [item for item in data if item.get(relation_key) == relation_value]
+def delete(db: Session, item_id: int):
+    item = db.query({table_name.capitalize()}).filter({table_name.capitalize()}.id == item_id).first()
+    if item:
+        db.delete(item)
+        db.commit()
+        return item
+    return None
 """)
-
-        # Serviço
-        with open(f"output/{table_name}/service.py", "w") as service_file:
-            service_file.write(f"""
-from .repository import get_all, get_one, create, delete, get_related_{table_name.lower()}
-from .models import {table_name.capitalize()}
-
-def get_all_{table_name.lower()}s():
-    return get_all()
-
-def get_{table_name.lower()}(id: int):
-    return get_one(id)
-
-def create_{table_name.lower()}(item: {table_name.capitalize()}):
-    return create(item.dict())
-
-def delete_{table_name.lower()}(id: int):
-    return delete(id)
-
-def get_related_{table_name.lower()}s(relation_key: str, relation_value):
-    return get_related_{table_name.lower()}(relation_key, relation_value)
-""")
-
-        # Controlador
-        with open(f"output/{table_name}/controller.py", "w") as controller_file:
-            controller_file.write(f"""
+        
+def generate_controller(table_name):
+    with open(f"output/controllers/{table_name}.py", "w") as controller_file:
+        controller_file.write(f"""
 from fastapi import APIRouter, HTTPException
-from .models import {table_name.capitalize()}
-from .service import get_all_{table_name.lower()}s, get_{table_name.lower()}, create_{table_name.lower()}, delete_{table_name.lower()}
+from models.{table_name} import {table_name.capitalize()}
+from services.{table_name} import get_all_{table_name.lower()}s, get_{table_name.lower()}, create_{table_name.lower()}, delete_{table_name.lower()}
 
 router = APIRouter()
 
-@router.get("/")
+@router.get("{table_name}/")
 def read_items():
     return get_all_{table_name.lower()}s()
 
-@router.get("/{table_name.lower()}_id")
+@router.get("{table_name}/{{id}}")
 def read_item({table_name.lower()}_id: int):
     item = get_{table_name.lower()}({table_name.lower()}_id)
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
     return item
 
-@router.post("/")
+@router.post("{table_name}/")
 def create_item(item: {table_name.capitalize()}):
     return create_{table_name.lower()}(item)
 
-@router.delete("/{table_name.lower()}_id")
+@router.delete("{table_name}/{{id}}")
 def delete_item({table_name.lower()}_id: int):
     delete_{table_name.lower()}({table_name.lower()}_id)
     return {{"message": "Deleted"}}
 """)
+
+def generate_service(table_name):
+    with open(f"output/services/{table_name}.py", "w") as service_file:
+        service_file.write(f"""
+from repositories.{table_name} import get_all, get_by_id, create, delete
+from models.{table_name} import {table_name.capitalize()}
+
+def get_all_{table_name}s(db):
+    return get_all(db)
+
+def get_{table_name}(db, item_id: int):
+    return get_by_id(db, item_id)
+
+def create_{table_name}(db, item_data: dict):
+    return create(db, item_data)
+
+def delete_{table_name}(db, item_id: int):
+    return delete(db, item_id)
+""")
+
+def generate_schema(table_name, table_data):
+    with open(f"output/schemas/{table_name}.py", "w") as schema_file:
+        schema_file.write("from pydantic import BaseModel\n")
+        schema_file.write("from typing import List, Optional\n")
+        schema_file.write("from datetime import datetime\n\n")
+
+        # Definir o Schema Base
+        schema_file.write(f"class {table_name.capitalize()}Base(BaseModel):\n")
+        columns = table_data["columns"]
+        for column_name, column_type in columns.items():
+            python_type = {
+                "int": "int",
+                "string": "str",
+                "float": "float",
+                "datetime": "datetime"
+            }.get(column_type, "str")
+            schema_file.write(f"    {column_name}: {python_type}\n")
+
+        # Definir o Schema Completo
+        schema_file.write(f"\nclass {table_name.capitalize()}({table_name.capitalize()}Base):\n")
+        schema_file.write(f"    id: int\n")
+        schema_file.write(f"    created_at: datetime\n")
+        schema_file.write(f"    updated_at: datetime\n")
+        schema_file.write("\n    class Config:\n")
+        schema_file.write("        orm_mode = True\n")
 
 def parse_input(input_text):
     input_stream = InputStream(input_text)
@@ -154,15 +201,15 @@ if __name__ == "__main__":
         id int
         name string
         email string
-        events one-to-many Event id
+        events one-to-many Event
     }
 
     table Event {
         id int
         title string
         date datetime
-        organizer one-to-one User id
+        organizer one-to-one User
     }
     """
     parsed_data = parse_input(input_data)
-    generate_sqlalchemy_models(parsed_data)
+    generate_fastapi_files(parsed_data)

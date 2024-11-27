@@ -98,7 +98,7 @@ def get_by_id(db: Session, item_id: int):
     return db.query({table_name.capitalize()}).filter({table_name.capitalize()}.id == item_id).first()
 
 def create(db: Session, item_data: dict):
-    item = {table_name.capitalize()}(**item_data)
+    item = {table_name.capitalize()}(**item_data.dict())
     db.add(item)
     db.commit()
     db.refresh(item)
@@ -116,30 +116,31 @@ def delete(db: Session, item_id: int):
 def generate_controller(table_name):
     with open(f"output/controllers/{table_name}.py", "w") as controller_file:
         controller_file.write(f"""
-from fastapi import APIRouter, HTTPException
-from models.{table_name} import {table_name.capitalize()}
+from fastapi import Depends, APIRouter, HTTPException
+from schemas.{table_name} import {table_name.capitalize()}
 from services.{table_name} import get_all_{table_name.lower()}s, get_{table_name.lower()}, create_{table_name.lower()}, delete_{table_name.lower()}
-
+from config.database import get_db
+from sqlalchemy.orm import Session
 router = APIRouter()
 
-@router.get("{table_name}/")
-def read_items():
-    return get_all_{table_name.lower()}s()
+@router.get("/{table_name}/")
+def read_items(db: Session = Depends(get_db)):
+    return get_all_{table_name.lower()}s(db)
 
-@router.get("{table_name}/{{id}}")
-def read_item({table_name.lower()}_id: int):
-    item = get_{table_name.lower()}({table_name.lower()}_id)
+@router.get("/{table_name}/{{id}}")
+def read_item(id: int, db: Session = Depends(get_db)):
+    item = get_{table_name.lower()}(db, id)
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
     return item
 
-@router.post("{table_name}/")
-def create_item(item: {table_name.capitalize()}):
-    return create_{table_name.lower()}(item)
+@router.post("/{table_name}/")
+def create_item(item: {table_name.capitalize()}, db: Session = Depends(get_db)):
+    return create_{table_name.lower()}(db, item)
 
-@router.delete("{table_name}/{{id}}")
-def delete_item({table_name.lower()}_id: int):
-    delete_{table_name.lower()}({table_name.lower()}_id)
+@router.delete("/{table_name}/{{id}}")
+def delete_item(id: int, db: Session = Depends(get_db)):
+    delete_{table_name.lower()}(db, id)
     return {{"message": "Deleted"}}
 """)
 
@@ -149,16 +150,16 @@ def generate_service(table_name):
 from repositories.{table_name} import get_all, get_by_id, create, delete
 from models.{table_name} import {table_name.capitalize()}
 
-def get_all_{table_name}s(db):
+def get_all_{table_name.lower()}s(db):
     return get_all(db)
 
-def get_{table_name}(db, item_id: int):
+def get_{table_name.lower()}(db, item_id: int):
     return get_by_id(db, item_id)
 
-def create_{table_name}(db, item_data: dict):
+def create_{table_name.lower()}(db, item_data: dict):
     return create(db, item_data)
 
-def delete_{table_name}(db, item_id: int):
+def delete_{table_name.lower()}(db, item_id: int):
     return delete(db, item_id)
 """)
 
@@ -184,7 +185,5 @@ def generate_schema(table_name, table_data):
         # Definir o Schema Completo
         schema_file.write(f"\nclass {table_name.capitalize()}({table_name.capitalize()}Base):\n")
         schema_file.write(f"    id: int\n")
-        schema_file.write(f"    created_at: datetime\n")
-        schema_file.write(f"    updated_at: datetime\n")
         schema_file.write("\n    class Config:\n")
         schema_file.write("        from_attributes = True\n")

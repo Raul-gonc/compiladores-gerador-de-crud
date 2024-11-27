@@ -8,12 +8,28 @@ def generate_fastapi_files(parsed_data):
     os.makedirs(f"output/controllers", exist_ok=True)
     os.makedirs(f"output/schemas", exist_ok=True)
     shutil.copytree("base-fastapi", "output", dirs_exist_ok=True)
+    generate_main(parsed_data.items())
     for table_name, table_data in parsed_data.items():
         generate_sqlalchemy_model(table_name, table_data)
         generate_repository(table_name)
         generate_service(table_name)
         generate_controller(table_name)
         generate_schema(table_name, table_data)
+
+def generate_main(parsed_data):
+    with open(f"output/main.py", "w") as model_file:
+        model_file.write("from fastapi import FastAPI\n")
+        for table_name, table_data in parsed_data:
+            model_file.write(f"from controllers import {table_name}\n")
+        
+        model_file.write("from config.database import Base, engine\n\n")
+
+        model_file.write("app = FastAPI()\n")
+        model_file.write("Base.metadata.create_all(bind= engine)\n\n")
+
+        for table_name, table_data in parsed_data:
+            model_file.write(f"app.include_router({table_name}.router)\n")
+
 
 def generate_sqlalchemy_model(table_name, table_data):
     relations = table_data["relations"]
@@ -171,4 +187,4 @@ def generate_schema(table_name, table_data):
         schema_file.write(f"    created_at: datetime\n")
         schema_file.write(f"    updated_at: datetime\n")
         schema_file.write("\n    class Config:\n")
-        schema_file.write("        orm_mode = True\n")
+        schema_file.write("        from_attributes = True\n")

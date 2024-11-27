@@ -1,7 +1,57 @@
+import sys
 from fastapiGenerator import generate_fastapi_files
 from antlr4 import InputStream, CommonTokenStream
 from DatabaseModelLexer import DatabaseModelLexer
 from DatabaseModelParser import DatabaseModelParser
+tables = {}
+
+def parse_columns(table_column):
+    columns = {}
+    for column in table_column:
+        column_name = column.columnName.text
+        column_type = column.columnType.text
+        column_props = []
+
+        for prop in column.PROP():
+            column_props.append(prop.getText())
+
+        if not column_name:
+            raise Exception("A coluna não possui nome")
+        if not column_type:
+            raise Exception(f"A coluna '{column_name}' não possui um tipo definido.")
+
+        columns[column_name] = {"type": column_type, "props": column_props}
+    return columns
+
+
+def parse_relations(table_relations):
+    relations = []
+    for relation in table_relations:
+        relation_name = relation.relationName.text
+        relation_type = relation.relationType.text
+        related_table = relation.relatedTable.text
+
+        if not relation_name:
+            raise Exception("A relação não possui nome")
+        if not relation_type:
+            raise Exception(f"A relação '{relation_name}' não possui um tipo definido")
+        if not related_table:
+            raise Exception(f"A relação '{relation_name}' não possui uma tabela relacionada")
+
+        relations.append({"name": relation_name, "type": relation_type, "table": related_table, "back_name": None})
+    return relations
+
+
+def parse_table(table):
+    table_name = table.tableName.text
+
+    if not table_name:
+        raise Exception("A tabela não possui nome")
+
+    columns = parse_columns(table.column())
+    relations = parse_relations(table.relation())
+
+    return {"columns": columns, "relations": relations}
 
 def parse_input(input_text):
     input_stream = InputStream(input_text)
@@ -9,28 +59,13 @@ def parse_input(input_text):
     token_stream = CommonTokenStream(lexer)
     parser = DatabaseModelParser(token_stream)
     tree = parser.database()
-
-    tables = {}
+    if parser.getNumberOfSyntaxErrors()>0:
+        print("O código tem um erro sintático")
+        sys.exit(1)
 
     for table in tree.table():
         table_name = table.tableName.text
-        columns = {}
-        relations = []
-
-        for column in table.column():
-            column_name = column.columnName.text
-            column_type = column.columnType.text
-            column_props = []
-            for prop in column.PROP():
-                column_props.append(prop.getText())
-            columns[column_name] = {"type": column_type, "props": column_props}
-
-        for relation in table.relation():
-            relation_name = relation.relationName.text
-            relation_type = relation.relationType.text
-            related_table = relation.relatedTable.text
-            relations.append({"name": relation_name, "type": relation_type, "table": related_table, "back_name": None})
-        tables[table_name] = {"columns": columns, "relations": relations}
+        tables[table_name] = parse_table(table)
     
     for table_name, table_data in tables.items():
         for relation in table_data["relations"]:

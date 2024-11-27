@@ -10,16 +10,18 @@ else:
 
 def serializedATN():
     return [
-        4,1,7,32,2,0,7,0,2,1,7,1,2,2,7,2,2,3,7,3,1,0,4,0,10,8,0,11,0,12,
+        4,1,9,40,2,0,7,0,2,1,7,1,2,2,7,2,2,3,7,3,1,0,4,0,10,8,0,11,0,12,
         0,11,1,1,1,1,1,1,1,1,1,1,4,1,19,8,1,11,1,12,1,20,1,1,1,1,1,2,1,2,
-        1,2,1,3,1,3,1,3,1,3,1,3,0,0,4,0,2,4,6,0,0,30,0,9,1,0,0,0,2,13,1,
-        0,0,0,4,24,1,0,0,0,6,27,1,0,0,0,8,10,3,2,1,0,9,8,1,0,0,0,10,11,1,
-        0,0,0,11,9,1,0,0,0,11,12,1,0,0,0,12,1,1,0,0,0,13,14,5,1,0,0,14,15,
-        5,6,0,0,15,18,5,2,0,0,16,19,3,4,2,0,17,19,3,6,3,0,18,16,1,0,0,0,
-        18,17,1,0,0,0,19,20,1,0,0,0,20,18,1,0,0,0,20,21,1,0,0,0,21,22,1,
-        0,0,0,22,23,5,3,0,0,23,3,1,0,0,0,24,25,5,6,0,0,25,26,5,4,0,0,26,
-        5,1,0,0,0,27,28,5,6,0,0,28,29,5,5,0,0,29,30,5,6,0,0,30,7,1,0,0,0,
-        3,11,18,20
+        1,2,5,2,28,8,2,10,2,12,2,31,9,2,1,2,1,2,1,3,1,3,1,3,1,3,1,3,1,3,
+        0,0,4,0,2,4,6,0,0,39,0,9,1,0,0,0,2,13,1,0,0,0,4,24,1,0,0,0,6,34,
+        1,0,0,0,8,10,3,2,1,0,9,8,1,0,0,0,10,11,1,0,0,0,11,9,1,0,0,0,11,12,
+        1,0,0,0,12,1,1,0,0,0,13,14,5,1,0,0,14,15,5,8,0,0,15,18,5,2,0,0,16,
+        19,3,4,2,0,17,19,3,6,3,0,18,16,1,0,0,0,18,17,1,0,0,0,19,20,1,0,0,
+        0,20,18,1,0,0,0,20,21,1,0,0,0,21,22,1,0,0,0,22,23,5,3,0,0,23,3,1,
+        0,0,0,24,25,5,8,0,0,25,29,5,4,0,0,26,28,5,6,0,0,27,26,1,0,0,0,28,
+        31,1,0,0,0,29,27,1,0,0,0,29,30,1,0,0,0,30,32,1,0,0,0,31,29,1,0,0,
+        0,32,33,5,5,0,0,33,5,1,0,0,0,34,35,5,8,0,0,35,36,5,7,0,0,36,37,5,
+        8,0,0,37,38,5,5,0,0,38,7,1,0,0,0,4,11,18,20,29
     ]
 
 class DatabaseModelParser ( Parser ):
@@ -32,10 +34,11 @@ class DatabaseModelParser ( Parser ):
 
     sharedContextCache = PredictionContextCache()
 
-    literalNames = [ "<INVALID>", "'table'", "'{'", "'}'" ]
+    literalNames = [ "<INVALID>", "'table'", "'{'", "'}'", "<INVALID>", 
+                     "';'" ]
 
     symbolicNames = [ "<INVALID>", "<INVALID>", "<INVALID>", "<INVALID>", 
-                      "TYPE", "REL_TYPE", "ID", "WS" ]
+                      "TYPE", "PV", "PROP", "REL_TYPE", "ID", "WS" ]
 
     RULE_database = 0
     RULE_table = 1
@@ -49,9 +52,11 @@ class DatabaseModelParser ( Parser ):
     T__1=2
     T__2=3
     TYPE=4
-    REL_TYPE=5
-    ID=6
-    WS=7
+    PV=5
+    PROP=6
+    REL_TYPE=7
+    ID=8
+    WS=9
 
     def __init__(self, input:TokenStream, output:TextIO = sys.stdout):
         super().__init__(input, output)
@@ -191,7 +196,7 @@ class DatabaseModelParser ( Parser ):
                 self.state = 20 
                 self._errHandler.sync(self)
                 _la = self._input.LA(1)
-                if not (_la==6):
+                if not (_la==8):
                     break
 
             self.state = 22
@@ -214,11 +219,20 @@ class DatabaseModelParser ( Parser ):
             self.columnName = None # Token
             self.columnType = None # Token
 
+        def PV(self):
+            return self.getToken(DatabaseModelParser.PV, 0)
+
         def ID(self):
             return self.getToken(DatabaseModelParser.ID, 0)
 
         def TYPE(self):
             return self.getToken(DatabaseModelParser.TYPE, 0)
+
+        def PROP(self, i:int=None):
+            if i is None:
+                return self.getTokens(DatabaseModelParser.PROP)
+            else:
+                return self.getToken(DatabaseModelParser.PROP, i)
 
         def getRuleIndex(self):
             return DatabaseModelParser.RULE_column
@@ -238,12 +252,25 @@ class DatabaseModelParser ( Parser ):
 
         localctx = DatabaseModelParser.ColumnContext(self, self._ctx, self.state)
         self.enterRule(localctx, 4, self.RULE_column)
+        self._la = 0 # Token type
         try:
             self.enterOuterAlt(localctx, 1)
             self.state = 24
             localctx.columnName = self.match(DatabaseModelParser.ID)
             self.state = 25
             localctx.columnType = self.match(DatabaseModelParser.TYPE)
+            self.state = 29
+            self._errHandler.sync(self)
+            _la = self._input.LA(1)
+            while _la==6:
+                self.state = 26
+                self.match(DatabaseModelParser.PROP)
+                self.state = 31
+                self._errHandler.sync(self)
+                _la = self._input.LA(1)
+
+            self.state = 32
+            self.match(DatabaseModelParser.PV)
         except RecognitionException as re:
             localctx.exception = re
             self._errHandler.reportError(self, re)
@@ -262,6 +289,9 @@ class DatabaseModelParser ( Parser ):
             self.relationName = None # Token
             self.relationType = None # Token
             self.relatedTable = None # Token
+
+        def PV(self):
+            return self.getToken(DatabaseModelParser.PV, 0)
 
         def ID(self, i:int=None):
             if i is None:
@@ -292,12 +322,14 @@ class DatabaseModelParser ( Parser ):
         self.enterRule(localctx, 6, self.RULE_relation)
         try:
             self.enterOuterAlt(localctx, 1)
-            self.state = 27
+            self.state = 34
             localctx.relationName = self.match(DatabaseModelParser.ID)
-            self.state = 28
+            self.state = 35
             localctx.relationType = self.match(DatabaseModelParser.REL_TYPE)
-            self.state = 29
+            self.state = 36
             localctx.relatedTable = self.match(DatabaseModelParser.ID)
+            self.state = 37
+            self.match(DatabaseModelParser.PV)
         except RecognitionException as re:
             localctx.exception = re
             self._errHandler.reportError(self, re)

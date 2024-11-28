@@ -1,37 +1,33 @@
-# CompiladoresTurma2024.2
-Exemplo de Projeto utilizando ANTLR para a turma da disciplina de compiladores no semestre 2024.2
-
+# Gerador de CRUD
+A equipe é formada por Arthur Almeida, Max Jose e Raul Angelo, tendo como principal motivação facilitar o processo de inicializar um projeto, sem desperdiçar tempo com a criação de arquivos básicos necessários para o funcionamento do mesmo. Queremos oferecer uma solução prática para criar a base de um projeto utilizando algum framework, como por exemplo o fastAPI.
+A nossa linguagem, foi projetada para simplificar e automatizar a configuração inicial de projetos, eliminando tarefas repetitivas e manuais na criação de estruturas básicas. Com ela, você pode criar rapidamente a base de um projeto funcional utilizando frameworks como FastAPI, se preocupando apenas com a produtividade desde o início.
 
 1 - Instalação
      > wget https://www.antlr.org/download/antlr-4.13.2-complete.jar
      > mv antlr-4.13.2-complete.jar antlr.jar
      > pip install antlr4-python3-runtime
 
-2 - Crie um arquivo de descrição de linguagem:
+2 - Para compilar o ANTLR
 
-    Extensão g4 este arquivo deve possuir o mesmo nome da linguagem;
+    java -jar antlr.jar -Dlanguage=Python3 DatabaseModel.g4
 
-3 - Executar o ANTLR
+3 - Exemplo de configuração do arquivo input.expr, é necessário definir os métodos que você quer criar (GET POST PUT DELETE) para gerar o projeto:
 
-    ```java -jar antlr.jar -Dlanguage=Python3 Expressoes.g4```
+    table User(GET POST PUT DELETE) {
+        id int PRIMARY UNIQUE;
+        name string NOT NULL ;
+        email string NOT NULL ;
+        events one-to-many Event ;
+    }
+
+    table Event(GET POST) {
+        id int PRIMARY ;
+        title string NOT NULL ;
+        date datetime NOT NULL ;
+        descricao string ;
+        organizer many-to-one User ;
+    }
 
 4 - Executar o analisador:
-```
-    import sys
-    from antlr4 import *
-    from ExpressoesLexer import ExpressoesLexer
-    from ExpressoesParser import ExpressoesParser
 
-    input_stream = FileStream(sys.argv[1])
-    lexer = ExpressoesLexer(input_stream)
-    stream = CommonTokenStream(lexer)
-    parser = ExpressoesParser(stream)
-    tree = parser.prog()
-    if parser.getNumberOfSyntaxErrors()==0:
-        print("ok")
-        print(tree.toStringTree(recog=parser))
-    else:
-        print("erro sintático")
-```
-
-5 - Interpretar a árvore sintática....
+    python main.py input.expr

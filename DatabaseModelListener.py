@@ -44,5 +44,14 @@ class DatabaseModelListener(ParseTreeListener):
         pass
 
 
+    # Enter a parse tree produced by DatabaseModelParser#op.
+    def enterOp(self, ctx:DatabaseModelParser.OpContext):
+        pass
+
+    # Exit a parse tree produced by DatabaseModelParser#op.
+    def exitOp(self, ctx:DatabaseModelParser.OpContext):
+        pass
+
+
 
 del DatabaseModelParser

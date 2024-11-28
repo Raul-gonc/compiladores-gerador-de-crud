@@ -2,7 +2,7 @@ grammar DatabaseModel;
 
 database: table+;
 
-table: 'table' tableName=ID '{' (column | relation)+ '}';
+table: 'table' tableName=ID '(' op* ')' '{' (column | relation)+ '}';
 
 column: columnName=ID columnType=TYPE PROP* PV;
 
@@ -11,6 +11,8 @@ relation: relationName=ID relationType=REL_TYPE relatedTable=ID PV;
 TYPE: 'int' | 'string' | 'float' | 'boolean' | 'datetime';
 
 PV: ';';
+
+ op: 'POST' | 'PUT' | 'GET' | 'DELETE';
 
 PROP: 'PRIMARY' | 'UNIQUE' | 'NOT NULL';
 

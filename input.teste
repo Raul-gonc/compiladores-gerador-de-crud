@@ -1,0 +1,14 @@
+    table User(PUT DELETE) {
+        id int PRIMARY UNIQUE;
+        name string NOT NULL ;
+        email string NOT NULL ;
+        events one-to-many Event ;
+    }
+
+    table Event(POST PUT DELETE GET) {
+        id int PRIMARY ;
+        title string NOT NULL ;
+        date datetime NOT NULL ;
+        descricao string ;
+        organizer many-to-one User ;
+    }

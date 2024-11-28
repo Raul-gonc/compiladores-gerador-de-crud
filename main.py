@@ -1,18 +1,36 @@
 import sys
+import os
+import shutil
 from fastapiGenerator import generate_fastapi_files
-from antlr4 import InputStream, CommonTokenStream
+from antlr4 import InputStream, CommonTokenStream,FileStream
 from DatabaseModelLexer import DatabaseModelLexer
 from DatabaseModelParser import DatabaseModelParser
 tables = {}
 
+def parse_operations(table_operations):
+    operations = []
+ 
+    for operation in table_operations:
+        if operation.getText() not in operations:
+            operations.append(operation.getText())
+        else:
+            raise Exception("A tabela possui operações duplicadas!")
+    
+    return operations
+
 def parse_columns(table_column):
     columns = {}
+    has_primary = False
     for column in table_column:
         column_name = column.columnName.text
         column_type = column.columnType.text
         column_props = []
 
         for prop in column.PROP():
+            if prop.getText() == 'PRIMARY':
+                has_primary = True
+                if column_name != 'id':
+                    raise Exception("A primary key da tabela deve se chamar id.")
             column_props.append(prop.getText())
 
         if not column_name:
@@ -20,8 +38,15 @@ def parse_columns(table_column):
         if not column_type:
             raise Exception(f"A coluna '{column_name}' não possui um tipo definido.")
 
-        columns[column_name] = {"type": column_type, "props": column_props}
-    return columns
+        if column_name in columns.keys():
+            raise Exception(f"A coluna '{column_name}' já existe nesta tabela.")
+        else:
+            columns[column_name] = {"type": column_type, "props": column_props}
+
+    if(has_primary):
+        return columns
+    else:
+        raise Exception("A tabela não possui id.")
 
 
 def parse_relations(table_relations):
@@ -53,10 +78,11 @@ def parse_table(table):
         if table_count > 1:
             raise Exception("Já existe uma tabela com esse nome")
 
+    operations = parse_operations(table.op())
     columns = parse_columns(table.column())
     relations = parse_relations(table.relation())
 
-    return {"columns": columns, "relations": relations}
+    return {"columns": columns, "relations": relations, "operations" : operations}
 
 def check_inverse_relation():
     for table_name, table_data in tables.items():
@@ -82,8 +108,7 @@ def check_inverse_relation():
                         f"A tabela {related_table_name} não possui uma relação inversa do tipo {inverse_relation_name} para {table_name}, necessária como inversa da relação '{relation['name']}' em {table_name}"
                     )
 
-def parse_input(input_text):
-    input_stream = InputStream(input_text)
+def parse_input(input_stream):
     lexer = DatabaseModelLexer(input_stream)
     token_stream = CommonTokenStream(lexer)
     parser = DatabaseModelParser(token_stream)
@@ -101,21 +126,11 @@ def parse_input(input_text):
     return tables
 
 if __name__ == "__main__":
-    input_data = """
-    table User {
-        id int PRIMARY UNIQUE;
-        name string NOT NULL ;
-        email string NOT NULL ;
-        events one-to-many Event ;
-    }
+      
+    input_stream = FileStream(sys.argv[1])    
+    parsed_data = parse_input(input_stream)
 
-    table Event {
-        id int PRIMARY ;
-        title string NOT NULL ;
-        date datetime NOT NULL ;
-        descricao string ;
-        organizer many-to-one User ;
-    }
-    """
-    parsed_data = parse_input(input_data)
+    if os.path.exists("output"):
+        shutil.rmtree("output")
+
     generate_fastapi_files(parsed_data)

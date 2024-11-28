@@ -141,7 +141,6 @@ def update(db: Session, item_data: dict):
     item = {table_name.capitalize()}(**item_data.dict())
     db.merge(item)
     db.commit()
-    db.refresh(item)
     return item
 """)
         

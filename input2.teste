@@ -1,0 +1,12 @@
+table Book(GET POST PUT DELETE) {
+    id int PRIMARY UNIQUE;
+    title string NOT NULL;
+    publication_year int;
+    author many-to-one Author;
+}
+
+table Author(GET POST PUT DELETE) {
+    id int PRIMARY UNIQUE;
+    name string NOT NULL;
+    books one-to-many Book;
+}

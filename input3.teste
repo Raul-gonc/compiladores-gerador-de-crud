@@ -2,7 +2,7 @@ table Student(GET POST PUT DELETE) {
     id int PRIMARY UNIQUE;
     name string NOT NULL;
     email string UNIQUE NOT NULL;
-    enrollments one-to-many Enrollment;
+    enrollments one-to-one Enrollment;
 }
 
 table Course(GET POST PUT DELETE) {
@@ -16,6 +16,6 @@ table Course(GET POST PUT DELETE) {
 table Enrollment(GET POST) {
     id int PRIMARY UNIQUE;
     enrollment_date datetime NOT NULL;
-    student many-to-one Student;
+    student one-to-one Student;
     course many-to-one Course;
 }

@@ -94,6 +94,8 @@ def check_inverse_relation():
                 inverse_relation_name = "many-to-one"
             elif relation["type"] == "many-to-one":
                 inverse_relation_name = "one-to-many"
+            elif relation["type"] == "one-to-one":
+                inverse_relation_name = "one-to-one"
 
             if inverse_relation_name != "":
                 inverse_relation_found = False

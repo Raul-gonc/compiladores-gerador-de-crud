@@ -80,5 +80,3 @@ Exemplo:
     python main.py input.teste
 
 ## O código gerado pode ser encontrado na pasta output.
-
-### Grupo:
